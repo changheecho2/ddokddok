@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
+import { Link } from 'react-router-dom'
 import { getMembers, getJournals, getMeetings, fullRefresh, getRefreshStatus } from '../api/client'
 
 const MEETING_LABELS = ['3/14', '4/25', '6/13', '7/18']
@@ -101,6 +102,12 @@ export default function Dashboard() {
       <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
         <h1 className="text-2xl font-bold">똑똑 — 활동 현황</h1>
         <div className="flex items-center gap-3">
+          <Link
+            to="/admin"
+            className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-200 transition"
+          >
+            관리자
+          </Link>
           {status?.last_refresh_at && (
             <span className="text-xs text-gray-400">
               마지막 업데이트: {fmtDatetime(status.last_refresh_at)}

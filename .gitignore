@@ -41,5 +41,8 @@ frontend/.vite/
 Thumbs.db
 .DS_Store
 
-# Claude Code (contains personal access token)
-.claude/settings.json
+# Claude Code
+.claude/
+
+# Server logs
+backend/uvicorn_*.txt
