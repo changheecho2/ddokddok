@@ -1,8 +1,13 @@
 """디파짓 차감 계산 로직"""
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, datetime, timezone, timedelta
 from typing import Dict, List
+
+
+def today_kst() -> date:
+    """서버가 UTC여도 KST(UTC+9) 기준 오늘 날짜를 반환한다."""
+    return datetime.now(timezone(timedelta(hours=9))).date()
 
 # ── 차감 규칙 상수 ────────────────────────────────────────────────────────────
 
@@ -128,7 +133,7 @@ def calculate_all(supabase) -> List[MemberDeductionResult]:
         .data
     )
     journals = supabase.table("journals").select("id, hashtag, check_date, comment_check_date").execute().data
-    today = date.today()
+    today = today_kst()
     # 마감일이 지난 journal만 차감 대상
     journal_map: Dict[str, str] = {j["id"]: j["hashtag"] for j in journals}
     journal_check_due: Dict[str, bool] = {
@@ -205,7 +210,7 @@ def calculate_one(supabase, member_id: str) -> MemberDeductionResult:
 
     m = rows[0]
     journals = supabase.table("journals").select("id, hashtag, check_date, comment_check_date").execute().data
-    today = date.today()
+    today = today_kst()
     journal_map = {j["id"]: j["hashtag"] for j in journals}
     journal_check_due = {j["id"]: (date.fromisoformat(j["check_date"]) < today) for j in journals if j.get("check_date")}
     comment_check_due = {j["id"]: (date.fromisoformat(j["comment_check_date"]) < today) for j in journals if j.get("comment_check_date")}

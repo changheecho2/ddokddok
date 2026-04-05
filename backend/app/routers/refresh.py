@@ -1,5 +1,5 @@
 import os
-from datetime import date, datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Query
@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 from app.database import supabase
 from app.services.band_client import collect_journal_data
-from app.services.deposit_calculator import calculate_all
+from app.services.deposit_calculator import calculate_all, today_kst
 from app.routers.deposit import _apply_member, ApplyResponse
 
 router = APIRouter(prefix="/refresh", tags=["refresh"])
@@ -102,7 +102,7 @@ async def full_refresh(force: bool = Query(default=False)):
                     },
                 )
 
-    today = date.today()
+    today = today_kst()
 
     # 1. 전체 멤버 deposit_balance 50,000 초기화
     members = supabase.table("members").select("id, name").execute().data
