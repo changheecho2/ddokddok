@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   getMembers, getMeetings,
-  setBulkAttendance, updateSmallGroup,
+  setBulkAttendance, deleteAttendance, updateSmallGroup,
   adjustDeposit, fullRefresh,
 } from '../api/client'
 
@@ -45,14 +46,20 @@ function AttendanceTab({ members, meetings }) {
 
   async function handleSave() {
     if (!selectedMeeting) return
-    const attendances = members
-      .filter(m => attMap[m.id] !== null && attMap[m.id] !== undefined)
-      .map(m => ({ member_id: m.id, is_attended: attMap[m.id] }))
-    if (!attendances.length) { setMsg({ type: 'error', text: '입력된 출석 정보가 없습니다.' }); return }
     setSaving(true)
     try {
-      await setBulkAttendance(selectedMeeting.id, { attendances })
-      setMsg({ type: 'ok', text: `저장 완료 (${attendances.length}명)` })
+      const toUpsert = members.filter(m => attMap[m.id] !== null && attMap[m.id] !== undefined)
+      const toDelete = members.filter(m => attMap[m.id] === null || attMap[m.id] === undefined)
+
+      const ops = []
+      if (toUpsert.length) {
+        ops.push(setBulkAttendance(selectedMeeting.id, {
+          attendances: toUpsert.map(m => ({ member_id: m.id, is_attended: attMap[m.id] }))
+        }))
+      }
+      toDelete.forEach(m => ops.push(deleteAttendance(selectedMeeting.id, m.id).catch(() => {})))
+      await Promise.all(ops)
+      setMsg({ type: 'ok', text: `저장 완료` })
     } catch {
       setMsg({ type: 'error', text: '저장에 실패했습니다.' })
     } finally {
@@ -374,7 +381,12 @@ export default function Admin() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-6">관리자 페이지</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold">관리자 페이지</h1>
+        <Link to="/" className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-200 transition">
+          ← 대시보드
+        </Link>
+      </div>
 
       {/* 탭 */}
       <div className="flex border-b border-gray-200 mb-6">

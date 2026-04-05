@@ -27,6 +27,8 @@ export const setAttendance = (meetingId, body) =>
   api.post(`/meetings/${meetingId}/attendance`, body).then(r => r.data)
 export const setBulkAttendance = (meetingId, body) =>
   api.post(`/meetings/${meetingId}/attendance/bulk`, body).then(r => r.data)
+export const deleteAttendance = (meetingId, memberId) =>
+  api.delete(`/meetings/${meetingId}/attendance/${memberId}`)
 
 
 // ── Band Sync ─────────────────────────────────────────────────────────────────

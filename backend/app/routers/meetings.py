@@ -1,6 +1,6 @@
 from typing import List
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 
 from app.database import supabase
 from app.models.meeting import Meeting, AttendanceIn, BulkAttendanceIn, AttendanceOut
@@ -54,3 +54,12 @@ def upsert_attendance_bulk(meeting_id: str, body: BulkAttendanceIn):
     ).execute()
 
     return {"upserted": len(result.data)}
+
+
+@router.delete("/{meeting_id}/attendance/{member_id}", status_code=204)
+def delete_attendance(meeting_id: str, member_id: str):
+    supabase.table("meeting_attendance").delete()\
+        .eq("meeting_id", meeting_id)\
+        .eq("member_id", member_id)\
+        .execute()
+    return Response(status_code=204)
