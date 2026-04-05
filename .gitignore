@@ -19,6 +19,7 @@ build/
 .env
 .env.local
 .env.*.local
+frontend/.env.production
 
 # Node / Frontend
 node_modules/
@@ -39,3 +40,6 @@ frontend/.vite/
 # OS
 Thumbs.db
 .DS_Store
+
+# Claude Code (contains personal access token)
+.claude/settings.json

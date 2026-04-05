@@ -32,7 +32,14 @@ ddokddok/
 │   │   └── main.py        # FastAPI 진입점
 │   ├── .env.example       # 환경변수 예시 (실제 값 없이)
 │   └── requirements.txt
-├── frontend/              # Vite React 프로젝트 (추후 생성)
+├── frontend/              # Vite React 프로젝트
+│   ├── src/
+│   │   ├── api/           # Axios API 클라이언트 (client.js)
+│   │   ├── components/    # 공통 컴포넌트 (PasswordGate, MemberCard)
+│   │   ├── pages/         # 페이지 컴포넌트 (Dashboard, Admin)
+│   │   ├── App.jsx        # 라우팅 정의
+│   │   └── main.jsx       # 진입점 (BrowserRouter)
+│   └── .env               # VITE_API_BASE_URL, VITE_ADMIN_PASSWORD
 ├── sql/
 │   └── schema.sql         # Supabase에 실행할 DB 스키마
 ├── .gitignore
@@ -59,7 +66,10 @@ uvicorn app.main:app --reload
 ```bash
 cd frontend
 npm install
+# frontend/.env 파일에 VITE_API_BASE_URL, VITE_ADMIN_PASSWORD 설정
 npm run dev
+# → http://localhost:5173  (일반 멤버 뷰)
+# → http://localhost:5173/admin  (관리자 — 비밀번호 필요)
 ```
 
 ### 프론트엔드 GitHub Pages 배포
@@ -68,6 +78,13 @@ npm run dev
 cd frontend
 npm run build
 # gh-pages 브랜치로 dist/ 배포
+```
+
+### 프론트엔드 환경변수 (frontend/.env)
+
+```
+VITE_API_BASE_URL=http://localhost:8000   # 백엔드 URL
+VITE_ADMIN_PASSWORD=admin                 # 관리자 비밀번호
 ```
 
 ---
@@ -129,12 +146,19 @@ GET https://openapi.band.us/v2/band/post/comments
 
 ---
 
+## 주의사항
+
+- DB 데이터 삽입/수정은 반드시 Python supabase 클라이언트로만 할 것
+  (PowerShell 등 터미널에서 직접 SQL 실행 시 한글이 ?로 깨지는 문제 있음)
+
+---
+
 ## 환경변수 목록
 
 `backend/.env` 에 아래 키를 설정한다 (값은 절대 커밋하지 말 것):
 
 ```
 SUPABASE_URL=           # Supabase 프로젝트 URL
-SUPABASE_SERVICE_ROLE_KEY=  # Supabase service_role 키 (백엔드 전용)
+SUPABASE_SECRET_KEY=        # Supabase secret 키 (sb_secret_... 형식, 백엔드 전용)
 BAND_ACCESS_TOKEN=      # 네이버 밴드 OAuth 액세스 토큰
 ```
