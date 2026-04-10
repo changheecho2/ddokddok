@@ -1,4 +1,4 @@
-# 똑똑 (ddokddok) — 동아리 디파짓 관리 서비스
+# 승수머신 (ddokddok) — 동아리 디파짓 관리 서비스
 
 ## 프로젝트 개요
 
@@ -27,8 +27,9 @@
 ddokddok/
 ├── backend/
 │   ├── app/
-│   │   ├── routers/       # API 라우터 (members, journals, meetings 등)
+│   │   ├── routers/       # API 라우터 (members, journals, meetings, band, deposit, refresh)
 │   │   ├── models/        # Pydantic 모델
+│   │   ├── services/      # 비즈니스 로직 (band_client, deposit_calculator)
 │   │   └── main.py        # FastAPI 진입점
 │   ├── .env.example       # 환경변수 예시 (실제 값 없이)
 │   └── requirements.txt
@@ -38,7 +39,7 @@ ddokddok/
 │   │   ├── components/    # 공통 컴포넌트 (PasswordGate, MemberCard)
 │   │   ├── pages/         # 페이지 컴포넌트 (Dashboard, Admin)
 │   │   ├── App.jsx        # 라우팅 정의
-│   │   └── main.jsx       # 진입점 (BrowserRouter)
+│   │   └── main.jsx       # 진입점 (HashRouter — GitHub Pages 호환)
 │   └── .env               # VITE_API_BASE_URL, VITE_ADMIN_PASSWORD
 ├── sql/
 │   └── schema.sql         # Supabase에 실행할 DB 스키마
@@ -76,8 +77,7 @@ npm run dev
 
 ```bash
 cd frontend
-npm run build
-# gh-pages 브랜치로 dist/ 배포
+npm run deploy    # build + gh-pages 브랜치로 dist/ 자동 배포
 ```
 
 ### 프론트엔드 환경변수 (frontend/.env)
@@ -95,14 +95,15 @@ VITE_ADMIN_PASSWORD=admin                 # 관리자 비밀번호
 
 | 항목 | 기준 | 차감액 |
 |------|------|--------|
-| 정기모임 결석 | 정기모임 1회 불참 | 10,000원 |
-| 일지 미작성 | 해시태그 일지 미제출 (check_date 기준) | 5,000원 |
-| 댓글 미달 | 타인 일지 댓글 15개 미만 (comment_check_date 기준) | 5,000원 |
-| 조모임 미참석 | 해당 기간 조모임 불참 | 5,000원 |
+| 정기모임 결석 | 누적 결석 횟수 기반 (0~1회: 0원, 2회: 10,000원, 3회: 30,000원, 4회+: 50,000원) | 단계별 |
+| 일지 미작성 | 해시태그 일지 미제출 (check_date 다음날 기준, KST) | 10,000원/건 |
+| 댓글 미달 | 타인 일지 댓글 15개 미만 (comment_check_date 다음날 기준, KST) | 10,000원/건 |
+| 조모임 미참석 | `small_group_satisfied = FALSE` (NULL=미입력=차감없음) | 50,000원 |
 
 - 차감은 `deposit_history` 테이블에 이력으로 기록
 - 운영진이 수기로 차감 적용 가능
 - `members.deposit_balance`는 차감 후 잔액을 반영
+- 새로고침(POST /refresh) 쿨다운: **1분**
 
 ---
 
@@ -150,6 +151,9 @@ GET https://openapi.band.us/v2/band/post/comments
 
 - DB 데이터 삽입/수정은 반드시 Python supabase 클라이언트로만 할 것
   (PowerShell 등 터미널에서 직접 SQL 실행 시 한글이 ?로 깨지는 문제 있음)
+- Render 서버는 UTC 기준 → 날짜 비교 시 반드시 `today_kst()` 사용 (`backend/app/services/deposit_calculator.py`)
+- supabase-py postgrest 세션은 `http2=False`로 교체해야 함 (`backend/app/database.py`) — HTTP/2 idle 연결 끊김 방지
+- Render 무료티어 콜드스타트 방지를 위해 UptimeRobot으로 5분마다 ping 설정됨
 
 ---
 
