@@ -27,9 +27,9 @@
 ddokddok/
 ├── backend/
 │   ├── app/
-│   │   ├── routers/       # API 라우터 (members, journals, meetings, band, deposit, refresh)
+│   │   ├── routers/       # API 라우터 (members, journals, meetings, band, deposit, refresh, notify)
 │   │   ├── models/        # Pydantic 모델
-│   │   ├── services/      # 비즈니스 로직 (band_client, deposit_calculator)
+│   │   ├── services/      # 비즈니스 로직 (band_client, deposit_calculator, discord_notify)
 │   │   └── main.py        # FastAPI 진입점
 │   ├── .env.example       # 환경변수 예시 (실제 값 없이)
 │   └── requirements.txt
@@ -147,6 +147,24 @@ GET https://openapi.band.us/v2/band/post/comments
 
 ---
 
+## 디스코드 알림
+
+디스코드 웹훅을 통해 일지/댓글 마감 알림을 자동 전송한다.
+
+### 알림 종류
+
+| 시간 (KST) | 내용 |
+|------------|------|
+| 매주 일요일 21:00 | 마감 3시간 전 경고 (미작성자 + 작성자 명단) |
+| 매주 월요일 00:10 | 마감 후 결과 (미작성자 + 예상 차감액) |
+
+- 일지(`check_date`)와 댓글(`comment_check_date`) 알림이 별도로 동작
+- 해당 주에 마감일이 없으면 자동 스킵
+- 엔드포인트: `POST /notify/check` (cron-job.org에서 호출)
+- cron 스케줄: `0 12 * * 0` (경고), `10 15 * * 1` (결과)
+
+---
+
 ## 주의사항
 
 - DB 데이터 삽입/수정은 반드시 Python supabase 클라이언트로만 할 것
@@ -165,4 +183,5 @@ GET https://openapi.band.us/v2/band/post/comments
 SUPABASE_URL=           # Supabase 프로젝트 URL
 SUPABASE_SECRET_KEY=        # Supabase secret 키 (sb_secret_... 형식, 백엔드 전용)
 BAND_ACCESS_TOKEN=      # 네이버 밴드 OAuth 액세스 토큰
+DISCORD_WEBHOOK_URL=    # 디스코드 웹훅 URL
 ```
