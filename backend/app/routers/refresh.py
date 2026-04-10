@@ -12,7 +12,7 @@ from app.routers.deposit import _apply_member, ApplyResponse
 
 router = APIRouter(prefix="/refresh", tags=["refresh"])
 
-COOLDOWN_MINUTES = 60
+COOLDOWN_MINUTES = 1
 
 
 # ── 상태 저장 헬퍼 ─────────────────────────────────────────────────────────────
