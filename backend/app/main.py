@@ -7,7 +7,11 @@ app = FastAPI(title="똑똑 디파짓 관리 API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*", "https://changheecho2.github.io"],
+    allow_origins=[
+        "https://changheecho2.github.io",
+        "http://localhost:5173",
+        "http://localhost:3000",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
