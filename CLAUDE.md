@@ -165,6 +165,21 @@ GET https://openapi.band.us/v2/band/post/comments
 
 ---
 
+## 자동갱신 (cron)
+
+- `POST /refresh`를 **cron-job.org에서 매 10분**(`*/10 * * * *`) 호출해 밴드 현황을 자동 갱신
+- ⚠️ cron-job.org 기본 메서드는 GET → **ADVANCED 탭에서 Request method를 POST로 지정**해야 함 (안 하면 405)
+- `POST /refresh`는 매번 `deposit_history` 전삭제 후 재계산(멱등). 수기 입력(모임 출석·조모임)은 별도 테이블이라 안 지워짐
+- 상세 절차·함정은 [운영 런북](docs/운영-런북.md) 참고
+
+---
+
+## 운영 런북
+
+새 기수 전환, 자동갱신 설정, venv 복구 등 반복 작업의 단계별 가이드는 [docs/운영-런북.md](docs/운영-런북.md)에 있다.
+
+---
+
 ## 주의사항
 
 - DB 데이터 삽입/수정은 반드시 Python supabase 클라이언트로만 할 것
@@ -181,7 +196,12 @@ GET https://openapi.band.us/v2/band/post/comments
 
 ```
 SUPABASE_URL=           # Supabase 프로젝트 URL
-SUPABASE_SECRET_KEY=        # Supabase secret 키 (sb_secret_... 형식, 백엔드 전용)
+SUPABASE_SECRET_KEY=    # Supabase secret 키 (sb_secret_... 형식, 백엔드 전용)
 BAND_ACCESS_TOKEN=      # 네이버 밴드 OAuth 액세스 토큰
+BAND_KEY=               # 밴드 키 (기수마다 다름 — 밴드 목록 API로 조회, 운영 런북 참고)
 DISCORD_WEBHOOK_URL=    # 디스코드 웹훅 URL
+CRON_JOB_ORG_PW=        # cron-job.org 로그인 비번 (API 키와는 별개)
 ```
+
+> **프로덕션 백엔드 URL**: `https://ddokddok-backend.onrender.com`
+> `BAND_KEY`는 기수 전환 시 로컬 `.env`와 **Render 환경변수** 양쪽 모두 바꿔야 한다.

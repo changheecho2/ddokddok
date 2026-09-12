@@ -46,3 +46,6 @@ Thumbs.db
 
 # Server logs
 backend/uvicorn_*.txt
+
+# DB backups (멤버 개인정보 포함 — 커밋 금지)
+backend/backup_*.json
