@@ -167,7 +167,8 @@ GET https://openapi.band.us/v2/band/post/comments
 
 ## 자동갱신 (cron)
 
-- `POST /refresh`를 **cron-job.org에서 매 10분**(`*/10 * * * *`) 호출해 밴드 현황을 자동 갱신
+- `POST /refresh`를 **cron-job.org에서 하루 1회, 00:05 KST**(`5 0 * * *`, timezone Asia/Seoul) 호출. 나머지는 필요 시 **수동 새로고침**으로 채운다 (실시간성은 일지 작성 기간에만 의미 있음)
+- ⚠️ **밴드 API 일일 쿼터 주의**: refresh 1회 = 포스트 1 + 글마다 댓글 조회(활성 일지 글 수만큼) ≈ 수십~백여 회. 과거 10분 주기(`*/10`)로 돌렸다가 하루 ~3,700회로 밴드 앱 쿼터 초과(`result_code 1001`)해 전 멤버가 X로 뜨는 장애 발생 → **저빈도 필수**
 - ⚠️ cron-job.org 기본 메서드는 GET → **ADVANCED 탭에서 Request method를 POST로 지정**해야 함 (안 하면 405)
 - `POST /refresh`는 매번 `deposit_history` 전삭제 후 재계산(멱등). 수기 입력(모임 출석·조모임)은 별도 테이블이라 안 지워짐
 - 상세 절차·함정은 [운영 런북](docs/운영-런북.md) 참고
