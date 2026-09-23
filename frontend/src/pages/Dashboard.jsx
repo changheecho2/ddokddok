@@ -2,7 +2,12 @@ import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { getMembers, getJournals, getMeetings, fullRefresh, getRefreshStatus } from '../api/client'
 
-const MEETING_LABELS = ['3/14', '4/25', '6/13', '7/18']
+// "2026-09-19" → "9/19"
+const fmtMD = (iso) => {
+  if (!iso) return ''
+  const [, m, d] = iso.split('-')
+  return `${Number(m)}/${Number(d)}`
+}
 
 function cell(val, trueLabel, falseLabel) {
   if (val === true)  return <span className="text-green-600 font-medium">{trueLabel}</span>
@@ -182,9 +187,9 @@ export default function Dashboard() {
                   <th key={`${j.id}-c`} className="border border-gray-200 px-2 py-1 text-center text-xs font-medium text-gray-500">댓글</th>
                 </>
               ))}
-              {meetings.map((mt, i) => (
+              {meetings.map((mt) => (
                 <th key={mt.id} className="border border-gray-200 px-2 py-1 text-center text-xs font-medium text-gray-500">
-                  {MEETING_LABELS[i] ?? mt.meeting_date?.slice(5).replace('-', '/')}
+                  {fmtMD(mt.meeting_date)}
                 </th>
               ))}
               <th className="border border-gray-200 px-2 py-1 text-center text-xs font-medium text-gray-500">총 차감</th>
