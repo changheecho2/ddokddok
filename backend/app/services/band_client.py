@@ -75,7 +75,9 @@ async def collect_journal_data(
     """
     밴드에서 hashtag에 해당하는 포스트를 수집하고 journal/comment 데이터를 반환.
 
-    check_date가 주어지면 해당일 23:59:59 이하에 작성된 포스트만 유효하게 처리한다.
+    check_date가 주어지면 해당일 23:59:59 이하에 작성된 포스트만 '일지 작성'으로 인정한다.
+    댓글은 마감과 무관하게 hashtag가 맞는 모든 포스트에서 카운트한다
+    (마감 넘겨 작성된 글에 달린 댓글도 유효 카운트).
 
     Returns:
         {
@@ -103,12 +105,11 @@ async def collect_journal_data(
     async with httpx.AsyncClient(timeout=30.0) as client:
         all_posts = await _fetch_all_posts(client, access_token, band_key)
 
-    # hashtag 포함 + '#기타' 미포함 + check_date 이하 포스트만 필터링
-    matched_posts = [
+    # hashtag 포함 + '#기타' 미포함 포스트 (댓글은 마감과 무관하게 전체 대상)
+    hashtag_posts = [
         p for p in all_posts
         if hashtag in p.get("content", "")
         and "#기타" not in p.get("content", "")
-        and (deadline_ms is None or p.get("created_at", 0) <= deadline_ms)
     ]
 
     journal_writes: Dict[str, bool] = {}
@@ -117,19 +118,21 @@ async def collect_journal_data(
     total_comments = 0
 
     async with httpx.AsyncClient(timeout=30.0) as client:
-        for post in matched_posts:
+        for post in hashtag_posts:
             author_name: str = post.get("author", {}).get("name", "")
             post_key: str = post.get("post_key", "")
+            created_at: int = post.get("created_at", 0)
+            within_deadline = deadline_ms is None or created_at <= deadline_ms
 
-            # 일지 작성자 매칭
+            # 일지 작성자 매칭 (마감 이내 작성분만 '작성'으로 인정)
             if author_name in member_name_map:
-                member_id = member_name_map[author_name]
-                journal_writes[member_id] = True
+                if within_deadline:
+                    journal_writes[member_name_map[author_name]] = True
             else:
                 if author_name and author_name not in unmatched:
                     unmatched.append(author_name)
 
-            # 댓글 수집 (rate limit 대비 0.1초 딜레이)
+            # 댓글 수집 (마감과 무관하게 태그 글이면 전부 카운트, rate limit 대비 0.1초 딜레이)
             if post_key:
                 await asyncio.sleep(0.1)
                 comments = await _fetch_all_comments(client, access_token, band_key, post_key)
@@ -144,7 +147,7 @@ async def collect_journal_data(
     return {
         "journal_writes": journal_writes,
         "comment_counts": comment_counts,
-        "synced_posts": len(matched_posts),
+        "synced_posts": len(hashtag_posts),
         "total_comments": total_comments,
         "unmatched": unmatched,
     }
