@@ -1,13 +1,19 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  getMembers, getMeetings,
+  getMembers, getMeetings, getJournals,
   setBulkAttendance, deleteAttendance, updateSmallGroup,
-  adjustDeposit, fullRefresh,
+  adjustDeposit, fullRefresh, updateJournal, updateMeeting,
 } from '../api/client'
 
-const MEETING_LABELS = { 1: '3/14', 2: '4/25', 3: '6/13', 4: '7/18' }
-const TABS = ['정기모임 출석', '조모임', '수동 조정', '새로고침']
+const TABS = ['정기모임 출석', '조모임', '수동 조정', '일정 관리', '새로고침']
+
+// "2026-09-19" → "9/19"
+const fmtMD = (iso) => {
+  if (!iso) return ''
+  const [, m, d] = iso.split('-')
+  return `${Number(m)}/${Number(d)}`
+}
 
 // ── 공통 유틸 ─────────────────────────────────────────────────────────────────
 
@@ -81,7 +87,7 @@ function AttendanceTab({ members, meetings }) {
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
-            {MEETING_LABELS[mt.sequence] ?? mt.meeting_date}
+            {mt.sequence}회차 ({fmtMD(mt.meeting_date)})
           </button>
         ))}
       </div>
@@ -362,18 +368,141 @@ function ForceRefreshTab() {
   )
 }
 
+// ── 일정 관리 탭 (일지 마감일 / 정모 날짜 편집) ──────────────────────────────────
+
+function ScheduleTab({ journals, meetings, onReload }) {
+  const [jDraft, setJDraft] = useState({}) // journal_id → {check_date, comment_check_date}
+  const [mDraft, setMDraft] = useState({}) // meeting_id → meeting_date
+  const [savingId, setSavingId] = useState(null)
+  const [msg, setMsg] = useState(null)
+
+  useEffect(() => {
+    const j = {}
+    for (const x of journals) j[x.id] = { check_date: x.check_date, comment_check_date: x.comment_check_date }
+    setJDraft(j)
+    const m = {}
+    for (const x of meetings) m[x.id] = x.meeting_date
+    setMDraft(m)
+  }, [journals, meetings])
+
+  async function saveJournal(jr) {
+    setSavingId(jr.id); setMsg(null)
+    try {
+      await updateJournal(jr.id, jDraft[jr.id])
+      setMsg({ type: 'ok', text: `${jr.hashtag} 저장 완료` })
+      onReload()
+    } catch {
+      setMsg({ type: 'error', text: '저장에 실패했습니다.' })
+    } finally {
+      setSavingId(null)
+    }
+  }
+
+  async function saveMeeting(mt) {
+    setSavingId(mt.id); setMsg(null)
+    try {
+      await updateMeeting(mt.id, { meeting_date: mDraft[mt.id] })
+      setMsg({ type: 'ok', text: `${mt.sequence}회차 저장 완료` })
+      onReload()
+    } catch {
+      setMsg({ type: 'error', text: '저장에 실패했습니다.' })
+    } finally {
+      setSavingId(null)
+    }
+  }
+
+  const inputCls = 'border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400'
+  const saveBtnCls = 'bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 transition shrink-0'
+
+  return (
+    <div className="space-y-8">
+      <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+        ⚠️ 날짜를 바꾼 뒤에는 <b>새로고침</b> 탭에서 강제 새로고침을 한 번 해야 차감 계산에 반영됩니다.
+      </p>
+
+      {/* 일지 마감일 */}
+      <section>
+        <h2 className="text-sm font-semibold text-gray-700 mb-1">일지 마감일</h2>
+        <p className="text-xs text-gray-400 mb-3">일지마감(check_date) 다음날, 댓글마감(comment_check_date) 다음날 KST 기준으로 차감이 계산됩니다.</p>
+        <div className="space-y-3">
+          {journals.map(jr => (
+            <div key={jr.id} className="bg-white border border-gray-200 rounded-lg p-3">
+              <p className="text-sm font-medium mb-2">
+                {jr.label} <span className="text-gray-400 font-normal">{jr.hashtag}</span>
+              </p>
+              <div className="flex flex-wrap items-end gap-3">
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">일지마감</label>
+                  <input
+                    type="date"
+                    value={jDraft[jr.id]?.check_date ?? ''}
+                    onChange={e => setJDraft(p => ({ ...p, [jr.id]: { ...p[jr.id], check_date: e.target.value } }))}
+                    className={inputCls}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">댓글마감</label>
+                  <input
+                    type="date"
+                    value={jDraft[jr.id]?.comment_check_date ?? ''}
+                    onChange={e => setJDraft(p => ({ ...p, [jr.id]: { ...p[jr.id], comment_check_date: e.target.value } }))}
+                    className={inputCls}
+                  />
+                </div>
+                <button onClick={() => saveJournal(jr)} disabled={savingId === jr.id} className={saveBtnCls}>
+                  {savingId === jr.id ? '저장 중...' : '저장'}
+                </button>
+              </div>
+            </div>
+          ))}
+          {journals.length === 0 && <p className="text-gray-400 text-sm">일지가 없습니다.</p>}
+        </div>
+      </section>
+
+      {/* 정모 날짜 */}
+      <section>
+        <h2 className="text-sm font-semibold text-gray-700 mb-3">정기모임 날짜</h2>
+        <div className="space-y-3">
+          {meetings.map(mt => (
+            <div key={mt.id} className="bg-white border border-gray-200 rounded-lg p-3 flex flex-wrap items-end gap-3">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">{mt.sequence}회차</label>
+                <input
+                  type="date"
+                  value={mDraft[mt.id] ?? ''}
+                  onChange={e => setMDraft(p => ({ ...p, [mt.id]: e.target.value }))}
+                  className={inputCls}
+                />
+              </div>
+              <button onClick={() => saveMeeting(mt)} disabled={savingId === mt.id} className={saveBtnCls}>
+                {savingId === mt.id ? '저장 중...' : '저장'}
+              </button>
+            </div>
+          ))}
+          {meetings.length === 0 && <p className="text-gray-400 text-sm">정모가 없습니다.</p>}
+        </div>
+      </section>
+
+      <Msg msg={msg} />
+    </div>
+  )
+}
+
 // ── Admin 메인 ────────────────────────────────────────────────────────────────
 
 export default function Admin() {
   const [activeTab, setActiveTab] = useState(0)
   const [members, setMembers] = useState([])
   const [meetings, setMeetings] = useState([])
+  const [journals, setJournals] = useState([])
   const [loading, setLoading] = useState(true)
 
   const loadMembers = () => getMembers().then(setMembers)
+  const loadMeetings = () => getMeetings().then(setMeetings)
+  const loadJournals = () => getJournals().then(setJournals)
 
   useEffect(() => {
-    Promise.all([loadMembers(), getMeetings().then(setMeetings)])
+    Promise.all([loadMembers(), loadMeetings(), loadJournals()])
       .finally(() => setLoading(false))
   }, [])
 
@@ -409,7 +538,8 @@ export default function Admin() {
       {activeTab === 0 && <AttendanceTab members={members} meetings={meetings} />}
       {activeTab === 1 && <SmallGroupTab members={members} onMembersChange={loadMembers} />}
       {activeTab === 2 && <ManualTab members={members} />}
-      {activeTab === 3 && <ForceRefreshTab />}
+      {activeTab === 3 && <ScheduleTab journals={journals} meetings={meetings} onReload={() => { loadJournals(); loadMeetings() }} />}
+      {activeTab === 4 && <ForceRefreshTab />}
     </div>
   )
 }

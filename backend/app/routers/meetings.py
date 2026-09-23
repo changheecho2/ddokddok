@@ -1,6 +1,8 @@
-from typing import List
+from typing import List, Optional
+from datetime import date
 
 from fastapi import APIRouter, HTTPException, Response
+from pydantic import BaseModel
 
 from app.database import supabase
 from app.models.meeting import Meeting, AttendanceIn, BulkAttendanceIn, AttendanceOut
@@ -8,10 +10,32 @@ from app.models.meeting import Meeting, AttendanceIn, BulkAttendanceIn, Attendan
 router = APIRouter(prefix="/meetings", tags=["meetings"])
 
 
+class MeetingUpdate(BaseModel):
+    meeting_date: Optional[date] = None
+    sequence: Optional[int] = None
+
+
 @router.get("", response_model=List[Meeting])
 def get_meetings():
     data = supabase.table("meetings").select("*").order("sequence").execute().data
     return data
+
+
+@router.patch("/{meeting_id}", response_model=Meeting)
+def update_meeting(meeting_id: str, body: MeetingUpdate):
+    payload = body.model_dump(exclude_unset=True)
+    if payload.get("meeting_date") is not None:
+        payload["meeting_date"] = payload["meeting_date"].isoformat()
+
+    if not payload:
+        raise HTTPException(status_code=400, detail="변경할 값이 없습니다.")
+
+    rows = supabase.table("meetings").select("id").eq("id", meeting_id).execute().data
+    if not rows:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+
+    result = supabase.table("meetings").update(payload).eq("id", meeting_id).execute()
+    return result.data[0]
 
 
 @router.post("/{meeting_id}/attendance", response_model=AttendanceOut, status_code=200)

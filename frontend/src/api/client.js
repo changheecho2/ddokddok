@@ -18,11 +18,13 @@ export const updateSmallGroup = (id, satisfied) =>
 export const getJournals = () => api.get('/journals').then(r => r.data)
 export const createJournal = (body) => api.post('/journals', body).then(r => r.data)
 export const deleteJournal = (id) => api.delete(`/journals/${id}`).then(r => r.data)
+export const updateJournal = (id, body) => api.patch(`/journals/${id}`, body).then(r => r.data)
 
 // ── Meetings ─────────────────────────────────────────────────────────────────
 
 export const getMeetings = () => api.get('/meetings').then(r => r.data)
 export const createMeeting = (body) => api.post('/meetings', body).then(r => r.data)
+export const updateMeeting = (id, body) => api.patch(`/meetings/${id}`, body).then(r => r.data)
 export const setAttendance = (meetingId, body) =>
   api.post(`/meetings/${meetingId}/attendance`, body).then(r => r.data)
 export const setBulkAttendance = (meetingId, body) =>
